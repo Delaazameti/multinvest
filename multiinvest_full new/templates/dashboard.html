@@ -1,0 +1,66 @@
+
+{% extends "base.html" %}
+{% block content %}
+<h2>Dashboard</h2>
+{% if request.args.get("error") %}
+  <div style="padding: 10px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; margin-bottom: 15px;">
+    {% if request.args.get("error") == "insufficient_balance" %}
+      Insufficient balance. Please enter a valid amount.
+    {% elif request.args.get("error") == "too_soon" %}
+      Withdrawals are only allowed after 2 months from your last completed investment.
+    {% else %}
+      An unknown error occurred.
+    {% endif %}
+  </div>
+{% endif %}
+<div class="balance">
+  <strong>Account Balance:</strong> {{ '%.2f'|format(user.balance) }}<br>
+  <strong>Completed Investments Total:</strong> {{ '%.2f'|format(completed_total) }}<br>
+  <strong>Projected Returns (5%):</strong> {{ '%.2f'|format(projected_return) }}
+</div>
+
+<h3>Investment History</h3>
+<table>
+  <thead>
+    <tr>
+      <th>ID</th><th>Firm</th><th>Transaction ID</th><th>Amount</th><th>Status</th><th>Invested Date</th><th>Useable Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for inv in investments %}
+    <tr>
+      <td>{{ inv.id }}</td>
+      <td>{{ inv.firm_name or 'N/A' }}</td>
+      <td>{{ inv.transaction_id }}</td>
+      <td class="amount">{{ '%.2f'|format(inv.amount) }}</td>
+      <td>{{ inv.status }}</td>
+      <td class="created_at" data-date="{{ inv.created_at }}">{{ inv.created_at }}</td>
+      <td class="projected_value" data-amount="{{ inv.amount }}" data-status="{{ inv.status }}">Calculating...</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7">No investments yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3>Withdrawal Requests</h3>
+<table>
+  <thead>
+    <tr>
+      <th>ID</th><th>Wallet</th><th>Amount</th><th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for w in withdrawals %}
+    <tr>
+      <td>{{ w.id }}</td>
+      <td>{{ w.wallet_address }}</td>
+      <td>{{ '%.2f'|format(w.amount) }}</td>
+      <td>{{ w.status }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4">No withdrawals yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

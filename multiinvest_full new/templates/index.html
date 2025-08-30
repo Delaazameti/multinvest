@@ -1,0 +1,46 @@
+
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>Your Gateway to Top Real Estate Investments</h1>
+  <p>Connect with vetted real estate firms. Diversify. Grow with confidence.</p>
+  <div class="hero-actions">
+    {% if not session.get('user_id') %}
+      <a href="{{ url_for('signup') }}" class="btn xl">Get Started</a>
+      <a href="{{ url_for('opportunities') }}" class="btn ghost">Explore Firms</a>
+    {% else %}
+      <a href="{{ url_for('dashboard') }}" class="btn xl">Go to Dashboard</a>
+    {% endif %}
+  </div>
+</section>
+
+<section class="experience">
+    <h1>TRUSTED BY MANY INVESTORS</h1>
+    <div class="experience-metrics">
+      <div>12 YEARS OF EXPERIENCE</div> 
+      <div>600,000 + INVESTORS</div>
+      <div>60 + AFFILIATES</div>
+    <div>MULTIPLE AWARD WINNERS</div>
+    </div>
+</section>
+
+
+
+<section class="features">
+  <div class="feature1">
+    <h3 class="stroke-text">Curated Firms</h3>
+   
+  </div>
+  <div class="feature2">
+    <h3 class="stroke-text">Simple Onboarding</h3>
+
+    
+  </div>
+  <div class="feature3">
+    <h3 class="stroke-text">Legal Practices Only</h3>
+    
+  </div>
+</section>
+
+
+{% endblock %}

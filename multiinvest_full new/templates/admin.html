@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin Panel</h2>
+
+<section>
+  <h3>Firms</h3>
+  <form method="post" action="{{ url_for('admin_add_firm') }}">
+    <input type="text" name="name" placeholder="Firm Name" required>
+    <textarea name="description" placeholder="Firm Description"></textarea>
+    <input type="text" name="image_url" placeholder="Image URL">
+    <button type="submit">Add Firm</button>
+  </form>
+
+  <table>
+    <thead><tr><th>ID</th><th>Name</th><th>Actions</th></tr></thead>
+    <tbody>
+    {% for f in firms %}
+      <tr>
+        <td>{{ f.id }}</td>
+        <td>{{ f.name }}</td>
+        <td><a href="{{ url_for('admin_delete_firm', firm_id=f.id) }}">Delete</a></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="3">No firms yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h3>Users</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th><th>Username</th><th>Email</th><th>Password</th><th>Balance</th><th>Admin</th><th>Update Balance</th><th>Delete</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for u in users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td>{{ u.username }}</td>
+        <td>{{ u.email }}</td>
+        <td>{{ u.password }}</td>
+        <td>{{ '%.2f'|format(u.balance) }}</td>
+        <td>{{ 'Yes' if u.is_admin else 'No' }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('admin_update_balance') }}" style="display:flex; gap:8px;">
+            <input type="hidden" name="user_id" value="{{ u.id }}">
+            <input type="number" step="0.01" name="balance" placeholder="New balance" required>
+            <button type="submit">Save</button>
+          </form>
+        </td>
+        <td>
+          {% if u.id != 1 %}
+            <a href="{{ url_for('admin_delete_user', user_id=u.id) }}" onclick="return confirm('Delete user {{ u.username }}?')">Delete</a>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h3>Investments</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th><th>User</th><th>Password</th><th>Firm</th><th>TxID</th><th>Amount</th><th>Status</th><th>Timestamp</th><th>Projected Returns</th><th>Change</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for i in investments %}
+      <tr>
+        <td>{{ i.id }}</td>
+        <td>{{ i.username }}</td>
+        <td>{{ i.password }}</td>
+        <td>{{ i.firm_name }}</td>
+        <td>{{ i.transaction_id }}</td>
+        <td>{{ '%.2f'|format(i.amount) }}</td>
+        <td>{{ i.status }}</td>
+        <td>{{ i.created_at }}</td>
+        <td>
+          {% if i.status == 'completed' %}
+            {% set days_passed = (current_time - i.created_at).days if i.created_at is not none else 0 %}
+            {% set periods = days_passed // 30 %}
+            {{ '%.2f'|format(i.amount * (1 + 0.05 * periods)) }}
+          {% else %}
+            0.00
+          {% endif %}
+        </td>
+        <td>
+          <form method="POST" action="{{ url_for('admin_update_investment') }}" style="display:flex; gap:8px;">
+            <input type="hidden" name="inv_id" value="{{ i.id }}">
+            <select name="status" required>
+              <option value="pending" {{ 'selected' if i.status=='pending' else '' }}>pending</option>
+              <option value="completed" {{ 'selected' if i.status=='completed' else '' }}>completed</option>
+              <option value="rejected" {{ 'selected' if i.status=='rejected' else '' }}>rejected</option>
+            </select>
+            <button type="submit">Update</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="10">No investments yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h3>Withdrawals</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th><th>User</th><th>Wallet</th><th>Amount</th><th>Status</th><th>Change</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for w in withdrawals %}
+      <tr>
+        <td>{{ w.id }}</td>
+        <td>{{ w.username }}</td>
+        <td>{{ w.wallet_address }}</td>
+        <td>{{ '%.2f'|format(w.amount) }}</td>
+        <td>{{ w.status }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('admin_update_withdrawal') }}" style="display:flex; gap:8px;">
+            <input type="hidden" name="wid" value="{{ w.id }}">
+            <select name="status" required>
+              <option value="pending" {{ 'selected' if w.status=='pending' else '' }}>pending</option>
+              <option value="completed" {{ 'selected' if w.status=='completed' else '' }}>completed</option>
+              <option value="rejected" {{ 'selected' if w.status=='rejected' else '' }}>rejected</option>
+            </select>
+            <button type="submit">Update</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6">No withdrawals yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}

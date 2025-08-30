@@ -1,0 +1,73 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Multinvest</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script defer src="{{ url_for('static', filename='js/script.js') }}"></script>
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <h1><a href="{{ url_for('index') }}">MultiInvest</a></h1>
+      <nav>
+        <a href="{{ url_for('index') }}">Home</a>
+        <a href="{{ url_for('contact') }}">About us</a>
+        <a href="{{ url_for('opportunities') }}">Opportunities</a>
+        {% if session.get('user_id') %}
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        {% endif %}
+       
+        {% if session.get('is_admin') %}
+        <a href="{{ url_for('admin') }}">Admin</a>
+        {% endif %}
+      </nav>
+      <div class="user-info">
+        {% if session.get('user_id') %}
+          <span>{{ user.username if user else 'User' }}</span> |
+          <span>Balance: {{ '%.2f'|format(user.balance) if user else '0.00' }}</span> |
+          <a href="{{ url_for('logout') }}">Logout</a>
+        {% else %}
+          <a href="{{ url_for('signup') }}">Sign up</a> |
+          <a href="{{ url_for('login') }}">Login</a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash">
+          {% for m in messages %}
+            <div class="flash-item">{{ m }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </div>
+
+  <footer>
+    <p>OUR MAIN AFFILIATES</p>
+    <div class="partners">
+      <span>BANKER AFFILIATES</span><span>COLLIERS INTERNATIONAL</span><span>REDFIN</span><span>COMPASS</span><span>JUDE INVEST</span>
+    </div>
+     <p>&copy; 2025 MultiInvest. All rights reserved.</p>
+  </footer>
+
+  <!-- Floating Button -->
+  <button class="floating-btn" onclick="togglePopup()">?</button>
+
+  <!-- Popup -->
+  <div class="popup" id="popup">
+    <p>Contact us through this email:</p>
+    <p><b>multinvesthelp@gmail.com</b></p>
+    <button class="close-btn" onclick="togglePopup()">Close</button>
+  </div>
+</body>
+</html>
+
+

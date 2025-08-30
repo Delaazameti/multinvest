@@ -1,0 +1,72 @@
+
+{% extends "base.html" %}
+{% block content %}
+<h2>Opportunities</h2>
+<p>Select a firm to invest with. Use the buttons below to invest or withdraw.</p>
+
+<div class="firms">
+  {% for firm in firms %}
+    <div class="firm-card">
+     <img src="{{ firm.image_url }}" alt="{{ firm.name }}" class="firm-img">
+     <h3>{{ firm.name }}</h3>
+     <p>{{ firm.description }}</p>
+    <button onclick="openInvestmentModal({{ firm.id }}, '{{ firm.name|e }}')">Invest</button>
+    </div>
+  {% endfor %}
+</div>
+
+<div style="margin-top:20px;">
+  <button onclick="openModal('withdrawModal')">Withdraw</button>
+</div>
+
+<!-- Investment Modal -->
+<div id="investModal" class="modal">
+  <div class="modal-content">
+    <h3>⚠️ Only BTC should be sent to this wallet address…</h3>
+
+    <p style="margin: 8px 0 12px 0;">
+       <div class="modal-content">
+  <h3>Wallet Address</h3>
+  <p id="wallet-address">bc1qwk6fsxe7qtafpge0cg6j3thtawg75kwner0r8h4s35uu5f2tae7qdlqrpr</p>
+  <button class="copy-btn" onclick="copyWallet()" style="background-color: transparent;" color="black">Copy</button>
+</div>
+    
+
+
+    <form method="POST" action="{{ url_for('invest') }}">
+      <input type="hidden" id="invest-firm-id" name="firm_id">
+
+      <label for="invest-amount">Amount</label>
+      <input type="number" step="5" min="250" id="invest-amount" name="amount" required placeholder="Enter withdrawal amount">
+
+      <label for="invest-txid">Transaction ID</label>
+      <input type="text" id="invest-txid" name="transaction_id" required placeholder="Paste your transaction id here">
+
+      <div class="modal-buttons">
+        <button type="button" onclick="closeModal('investModal')">Cancel</button>
+        <button type="submit">Proceed</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- Withdrawal Modal -->
+<div id="withdrawModal" class="modal">
+  <div class="modal-content">
+    <h3>⚠️ Paste only your TRC-20 wallet address here.</h3>
+    <form method="POST" action="{{ url_for('withdraw') }}">
+      <label for="withdraw-wallet">Wallet Address</label>
+      <input type="text" id="withdraw-wallet" name="wallet" required>
+
+      <label for="withdraw-amount">Amount</label>
+      <input type="number" step="0.01" min="100" id="withdraw-amount" name="amount" required>
+
+      <div class="modal-buttons">
+        <button type="button" onclick="closeModal('withdrawModal')">Cancel</button>
+        <button type="submit">Proceed</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
