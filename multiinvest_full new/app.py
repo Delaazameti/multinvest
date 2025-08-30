@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
+# Load environment variables from .env file
 load_dotenv()  # Load .env variables
 
 app = Flask(__name__)
@@ -14,16 +15,17 @@ app.secret_key = os.getenv("SECRET_KEY", "supersecret")
 
 # MySQL connection config from .env
 DB_CONFIG = {
-    'host': os.getenv("DB_HOST", "trolley.proxy.rlwy.net"),
-    'user': os.getenv("DB_USER", "root"),
-    'password': os.getenv("DB_PASSWORD", "hExadlRGHJrMvQtAjpKMkRDQLTHeewbj"),
-    'database': os.getenv("DB_NAME", "railway"),
-    'port': int(os.getenv("DB_PORT", 22558)), 
-    'auth_plugin': 'mysql_native_password'
+    'host': os.getenv("DB_HOST", "RAILWAY_PRIVATE_DOMAIN"),  # Railway's private domain for MySQL
+    'user': os.getenv("DB_USER", "root"),  # MySQL user
+    'password': os.getenv("DB_PASSWORD", "your_password_here"),  # MySQL password from environment variables
+    'database': os.getenv("DB_NAME", "railway"),  # MySQL database name
+    'port': int(os.getenv("DB_PORT", 3306)),  # MySQL port
+    'auth_plugin': 'mysql_native_password'  # Required for MySQL authentication
 }
 
 
 def get_db_connection():
+    """Establish and return a database connection."""
     conn = mysql.connector.connect(**DB_CONFIG)
     return conn
 
@@ -31,7 +33,8 @@ def init_db():
     """Drops and recreates all tables, then seeds initial data."""
     conn = get_db_connection()
     cursor = conn.cursor()
-    # Drop tables if exist (in correct order due to foreign keys)
+
+    # Drop tables if they exist (in correct order due to foreign keys)
     cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
     cursor.execute("DROP TABLE IF EXISTS withdrawals;")
     cursor.execute("DROP TABLE IF EXISTS investments;")
@@ -108,6 +111,7 @@ def init_db():
     conn.close()
 
 def current_user():
+    """Retrieve current user from the session."""
     if "user_id" not in session:
         return None
     conn = get_db_connection()
@@ -120,12 +124,15 @@ def current_user():
 
 @app.context_processor
 def inject_user():
+    """Inject current user into all templates."""
     return dict(user=current_user())
 
 def is_valid_email(email):
+    """Check if email is in a valid format."""
     return re.match(r"[^@]+@[^@]+\.[^@]+", email)
 
 def is_strong_password(password):
+    """Check if the password is strong enough."""
     if len(password) < 8:
         return False
     if not re.search(r'[A-Z]', password):
@@ -138,10 +145,12 @@ def is_strong_password(password):
 
 @app.route("/")
 def index():
+    """Render the home page."""
     return render_template("index.html")
 
 @app.route("/signup", methods=["GET","POST"])
 def signup():
+    """Handle user signup."""
     if request.method == "POST":
         username = request.form.get("username","").strip()
         email = request.form.get("email","").strip()
@@ -186,56 +195,39 @@ def signup():
 
     return render_template("signup.html")
 
-from werkzeug.security import check_password_hash
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    print("Login route reached")  # Debug log
+    """Handle user login."""
     if request.method == "POST":
-        try:
-            print("Handling POST request")  # Debug log
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "")
 
-            email = request.form.get("email", "").strip()
-            password = request.form.get("password", "")
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
 
-            print(f"Received email: {email}")  # Debug log
+        if user and check_password_hash(user["password"], password):
+            session["user_id"] = user["id"]
+            session["is_admin"] = bool(user["is_admin"])
+            return redirect(url_for("dashboard"))
 
-            conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-            user = cursor.fetchone()
-            cursor.close()
-            conn.close()
-
-            if user:
-                print("User found in DB")
-                print(f"Checking password for user {user['id']}")
-                if check_password_hash(user["password"], password):
-                    session["user_id"] = user["id"]
-                    session["is_admin"] = bool(user["is_admin"])
-                    print("Login successful. Redirecting to dashboard.")
-                    return redirect(url_for("dashboard"))
-                else:
-                    print("Password mismatch.")
-            else:
-                print("User not found.")
-
-            flash("Invalid credentials")
-            return redirect(url_for("login"))
-
-        except Exception as e:
-            print(f"🔥 Error during login: {e}")
-            return "Internal Server Error", 500
+        flash("Invalid credentials")
+        return redirect(url_for("login"))
 
     return render_template("login.html")
 
 @app.route("/logout")
 def logout():
+    """Log the user out."""
     session.clear()
     return redirect(url_for("login"))
 
 @app.route("/dashboard")
 def dashboard():
+    """Render the dashboard."""
     if "user_id" not in session:
         return redirect(url_for("login"))
 
@@ -264,6 +256,7 @@ def dashboard():
 
 @app.route("/opportunities")
 def opportunities():
+    """Render investment opportunities."""
     if "user_id" not in session:
         return redirect(url_for("login"))
 
@@ -278,6 +271,7 @@ def opportunities():
 
 @app.route("/invest", methods=["POST"])
 def invest():
+    """Handle investment requests."""
     if "user_id" not in session:
         return redirect(url_for("login"))
 
@@ -312,139 +306,6 @@ def invest():
     flash("Investment submitted and marked pending.")
     return redirect(url_for("opportunities"))
 
-@app.route("/withdraw", methods=["POST"])
-def withdraw():
-    if "user_id" not in session:
-        return redirect(url_for("login"))
-
-    try:
-        amount = float(request.form["amount"])
-        wallet_address = request.form["wallet"]
-    except (KeyError, ValueError):
-        flash("Invalid withdrawal request.")
-        return redirect(url_for("dashboard"))
-
-    if amount <= 0:
-        flash("Withdrawal amount must be greater than zero.")
-        return redirect(url_for("dashboard"))
-
-    user = current_user()
-    if amount > float(user["balance"]):
-        flash("Insufficient balance.")
-        return redirect(url_for("dashboard"))
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO withdrawals (user_id, wallet_address, amount, status)
-        VALUES (%s, %s, %s, %s)
-    """, (session["user_id"], wallet_address, amount, "pending"))
-    # Deduct user balance
-    cursor.execute("UPDATE users SET balance = balance - %s WHERE id = %s", (amount, session["user_id"]))
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    flash("Withdrawal request submitted.")
-    return redirect(url_for("dashboard"))
-
-@app.route("/admin")
-def admin():
-    if not session.get("is_admin"):
-        return redirect(url_for("login"))
-
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-
-    # List all investments
-    cursor.execute("""
-        SELECT i.*, u.username, f.name as firm_name
-        FROM investments i
-        JOIN users u ON i.user_id = u.id
-        LEFT JOIN firms f ON i.firm_id = f.id
-        ORDER BY i.created_at DESC
-    """)
-    investments = cursor.fetchall()
-
-    # List all users
-    cursor.execute("SELECT * FROM users")
-    users = cursor.fetchall()
-
-    # List all withdrawals
-    cursor.execute("""
-        SELECT w.*, u.username
-        FROM withdrawals w
-        JOIN users u ON w.user_id = u.id
-        ORDER BY w.id DESC
-    """)
-    withdrawals = cursor.fetchall()
-
-    cursor.close()
-    conn.close()
-
-    return render_template("admin.html", investments=investments, users=users, withdrawals=withdrawals)
-
-@app.route("/admin/approve_investment/<int:investment_id>")
-def approve_investment(investment_id):
-    if not session.get("is_admin"):
-        return redirect(url_for("login"))
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    # Approve investment: update status and add amount to user balance
-    cursor.execute("SELECT user_id, amount FROM investments WHERE id = %s", (investment_id,))
-    inv = cursor.fetchone()
-    if inv:
-        user_id, amount = inv
-        cursor.execute("UPDATE investments SET status = %s WHERE id = %s", ("completed", investment_id))
-        cursor.execute("UPDATE users SET balance = balance + %s WHERE id = %s", (amount, user_id))
-        conn.commit()
-
-    cursor.close()
-    conn.close()
-    flash("Investment approved.")
-    return redirect(url_for("admin"))
-
-@app.route("/admin/approve_withdrawal/<int:withdrawal_id>")
-def approve_withdrawal(withdrawal_id):
-    if not session.get("is_admin"):
-        return redirect(url_for("login"))
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("UPDATE withdrawals SET status = %s WHERE id = %s", ("completed", withdrawal_id))
-    conn.commit()
-
-    cursor.close()
-    conn.close()
-    flash("Withdrawal approved.")
-    return redirect(url_for("admin"))
-
-@app.route("/admin/delete_user/<int:user_id>")
-def delete_user(user_id):
-    if not session.get("is_admin"):
-        return redirect(url_for("login"))
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    flash("User deleted.")
-    return redirect(url_for("admin"))
-
-@app.route("/contact")
-def contact():
-    return render_template("contact.html")
-
-# More routes like /contact can be added similarly with MySQL adjustments
-
 if __name__ == "__main__":
     init_db()  # Initialize the database tables and seed data on startup
-    import os
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
